@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TurnSync</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+:root {
+  --bg:#080810; --surface:#10101a; --surface2:#16162a;
+  --border:#1e1e32; --border2:#2a2a44;
+  --accent:#00ffaa; --accent2:#ff5f38; --accent3:#9d7fff;
+  --text:#dde4f0; --muted:#505878;
+  --glow:0 0 28px rgba(0,255,170,.28),0 0 56px rgba(0,255,170,.09);
+  --glow2:0 0 28px rgba(255,95,56,.28),0 0 56px rgba(255,95,56,.09);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;display:flex;flex-direction:column}
+
+/* grid bg */
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,255,170,.02) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,255,170,.02) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;z-index:0}
+
+/* ── HEADER ── */
+header{position:relative;z-index:10;flex-shrink:0;
+  padding:12px 24px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);background:rgba(8,8,16,.92);backdrop-filter:blur(14px)}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:-.02em}
+.logo span{color:var(--accent)}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.status-pill{display:flex;align-items:center;gap:7px;font-size:.67rem;color:var(--muted);
+  border:1px solid var(--border);padding:4px 11px;border-radius:100px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:all .3s}
+.dot.on{background:var(--accent);box-shadow:0 0 7px var(--accent)}
+
+/* ── MAIN GRID ── */
+main{position:relative;z-index:1;flex:1;display:grid;grid-template-columns:240px 1fr;overflow:hidden;min-height:0}
+
+/* ── SIDEBAR ── */
+aside{border-right:1px solid var(--border);background:rgba(10,10,20,.75);
+  display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.sb-block{padding:14px;border-bottom:1px solid var(--border)}
+.sec-lbl{font-size:.55rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+.big-num{font-family:'Syne',sans-serif;font-weight:800;font-size:2.6rem;line-height:1;
+  color:var(--accent);text-shadow:0 0 18px rgba(0,255,170,.35);transition:all .3s}
+.unit-lbl{font-size:.68rem;color:var(--muted);margin-top:1px}
+.name-row{display:flex;gap:7px;align-items:center}
+.name-inp{flex:1;background:transparent;border:none;border-bottom:1px solid var(--border);
+  color:var(--text);font-family:'Space Mono',monospace;font-size:.72rem;padding:3px 0;outline:none;transition:border-color .2s}
+.name-inp:focus{border-color:var(--accent3)}
+.sm-btn{background:transparent;border:1px solid var(--border);color:var(--muted);
+  font-family:'Space Mono',monospace;font-size:.6rem;padding:3px 7px;border-radius:4px;cursor:pointer;transition:all .2s}
+.sm-btn:hover{border-color:var(--accent3);color:var(--accent3)}
+
+/* client list */
+.clist{flex:1;overflow-y:auto;padding:8px;min-height:0}
+.clist::-webkit-scrollbar{width:3px}
+.clist::-webkit-scrollbar-thumb{background:var(--border)}
+.ci{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:8px;margin-bottom:3px;
+  border:1px solid transparent;transition:all .3s;font-size:.7rem}
+.ci.active{border-color:var(--accent);background:rgba(0,255,170,.06);box-shadow:var(--glow)}
+.ci.me{border-color:rgba(157,127,255,.3);background:rgba(157,127,255,.04)}
+.ci.active.me{border-color:var(--accent);background:rgba(0,255,170,.1)}
+.ci-av{width:24px;height:24px;border-radius:50%;background:var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:.56rem;font-weight:700;
+  color:var(--muted);flex-shrink:0;transition:all .3s}
+.ci.active .ci-av{background:var(--accent);color:var(--bg)}
+.ci.me .ci-av{background:var(--accent3);color:var(--bg)}
+.ci-info{flex:1;min-width:0}
+.ci-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci-tags{display:flex;gap:3px;margin-top:2px}
+.tag{font-size:.45rem;padding:1px 5px;border-radius:100px;letter-spacing:.06em;text-transform:uppercase}
+.t-turn{background:rgba(0,255,170,.12);color:var(--accent)}
+.t-me{background:rgba(157,127,255,.12);color:var(--accent3)}
+.t-wait{background:rgba(255,95,56,.09);color:var(--accent2)}
+.ci-arr{font-size:.56rem;color:var(--accent);flex-shrink:0}
+
+/* ── STAGE ── */
+.stage{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:20px 28px;gap:14px;overflow-y:auto;position:relative;min-height:0}
+.stage::-webkit-scrollbar{width:3px}
+.stage::-webkit-scrollbar-thumb{background:var(--border)}
+
+/* ── READY GATE ── */
+#ready-gate{position:absolute;inset:0;z-index:30;
+  background:rgba(8,8,16,.97);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px}
+.gate-icon{font-size:3rem}
+.gate-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.45rem}
+.gate-sub{font-size:.73rem;color:var(--muted);line-height:1.75;max-width:330px}
+.btn-ready{background:var(--accent);color:var(--bg);font-family:'Syne',sans-serif;font-weight:700;
+  font-size:.9rem;border:none;padding:12px 36px;border-radius:100px;cursor:pointer;
+  transition:all .2s;box-shadow:var(--glow)}
+.btn-ready:hover{transform:scale(1.04);box-shadow:0 0 48px rgba(0,255,170,.55)}
+
+/* ── TURN HEADER ── */
+.turn-hdr{text-align:center;flex-shrink:0}
+.turn-lbl{font-size:.57rem;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:3px}
+.turn-name{font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:var(--text);transition:all .4s}
+.turn-name.mine{color:var(--accent);text-shadow:0 0 18px rgba(0,255,170,.3)}
+
+/* ── VIDEO AREA ── */
+.video-container{width:100%;max-width:680px;flex-shrink:0}
+
+/* Player — visible only to active client */
+.video-wrap{width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);
+  background:#000;position:relative;transition:border-color .4s,box-shadow .4s;display:none}
+.video-wrap.show{display:block}
+.video-wrap.playing{border-color:var(--accent2);box-shadow:var(--glow2)}
+#main-video{width:100%;display:block;aspect-ratio:16/9;background:#000}
+.vid-badge{position:absolute;top:9px;left:9px;background:rgba(0,0,0,.72);
+  border:1px solid rgba(255,95,56,.55);color:var(--accent2);font-size:.6rem;
+  padding:3px 9px;border-radius:100px;backdrop-filter:blur(4px)}
+
+/* Waiting screen — visible to non-active clients */
+.waiting-screen{width:100%;aspect-ratio:16/9;border-radius:12px;
+  border:1px solid var(--border);background:var(--surface);
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+  position:relative;overflow:hidden}
+.waiting-screen.show{display:flex}
+
+/* animated waiting rings */
+.waiting-screen::before,.waiting-screen::after{content:'';position:absolute;
+  border-radius:50%;border:1px solid rgba(0,255,170,.08);animation:pulse 3s ease-in-out infinite}
+.waiting-screen::before{width:160px;height:160px;animation-delay:0s}
+.waiting-screen::after{width:260px;height:260px;animation-delay:1s}
+@keyframes pulse{0%,100%{transform:scale(.9);opacity:.5}50%{transform:scale(1.1);opacity:1}}
+
+.wait-icon{font-size:2.4rem;position:relative;z-index:1}
+.wait-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:var(--muted);position:relative;z-index:1}
+.wait-who{font-size:.68rem;color:var(--accent);position:relative;z-index:1}
+.wait-dots{display:flex;gap:6px;position:relative;z-index:1}
+.wait-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.4s ease-in-out infinite}
+.wait-dot:nth-child(2){animation-delay:.2s}
+.wait-dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* ── PHASE BAR ── */
+.phase-bar-wrap{width:100%;max-width:680px;flex-shrink:0}
+.phase-info{display:flex;justify-content:space-between;align-items:center;font-size:.62rem;color:var(--muted);margin-bottom:6px}
+.phase-tag{padding:2px 9px;border-radius:100px;font-size:.52rem;text-transform:uppercase;letter-spacing:.1em}
+.p-playing{background:rgba(255,95,56,.14);color:var(--accent2)}
+.p-pausing{background:rgba(157,127,255,.14);color:var(--accent3)}
+.p-idle{background:rgba(80,88,120,.18);color:var(--muted)}
+.progress-track{width:100%;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;background:var(--accent2);transition:background .4s;width:0%}
+.progress-fill.pfp{background:var(--accent3)}
+
+/* ── VIDEO PANEL ── */
+.video-panel{width:100%;max-width:680px;border:1px solid var(--border);border-radius:12px;
+  background:var(--surface);overflow:hidden;flex-shrink:0}
+.vp-header{padding:12px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+.vp-title{font-size:.65rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.btn-upload{background:var(--accent);color:var(--bg);font-family:'Space Mono',monospace;
+  font-size:.65rem;font-weight:700;border:none;padding:6px 14px;border-radius:6px;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-upload:hover{box-shadow:var(--glow);transform:scale(1.03)}
+.vp-body{padding:12px;display:flex;flex-wrap:wrap;gap:8px;min-height:60px}
+.vid-chip{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;
+  border:1px solid var(--border);cursor:pointer;transition:all .25s;font-size:.68rem;
+  background:var(--surface2);max-width:100%}
+.vid-chip:hover{border-color:var(--accent3);background:rgba(157,127,255,.06)}
+.vid-chip.selected{border-color:var(--accent);background:rgba(0,255,170,.07);box-shadow:var(--glow)}
+.vid-chip-icon{font-size:1.1rem;flex-shrink:0}
+.vid-chip-info{min-width:0}
+.vid-chip-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;color:var(--text)}
+.vid-chip-size{font-size:.55rem;color:var(--muted);margin-top:1px}
+.vid-chip-check{margin-left:auto;color:var(--accent);font-size:.8rem;flex-shrink:0;display:none}
+.vid-chip.selected .vid-chip-check{display:block}
+
+/* hidden file input */
+#file-input{display:none}
+
+/* upload progress bar */
+.upload-bar-wrap{display:none;padding:0 12px 12px}
+.upload-bar-wrap.show{display:block}
+.upload-bar-lbl{font-size:.6rem;color:var(--muted);margin-bottom:5px}
+.upload-bar-track{width:100%;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.upload-bar-fill{height:100%;background:var(--accent3);border-radius:2px;width:0%;transition:width .2s}
+
+/* ── LOG ── */
+.event-log{width:100%;max-width:680px;max-height:80px;overflow-y:auto;
+  border:1px solid var(--border);border-radius:8px;background:rgba(0,0,0,.22);flex-shrink:0}
+.event-log::-webkit-scrollbar{width:3px}
+.event-log::-webkit-scrollbar-thumb{background:var(--border)}
+.log-entry{padding:5px 12px;font-size:.62rem;color:var(--muted);
+  border-bottom:1px solid rgba(255,255,255,.025);display:flex;gap:8px;animation:sIn .2s ease}
+.log-entry:last-child{border:none}
+@keyframes sIn{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
+.log-t{color:#252535;flex-shrink:0}
+
+/* ── FLASH / NOTIF ── */
+.flash{position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:rgba(0,255,170,.04);animation:fl .55s ease forwards}
+@keyframes fl{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+.notif{position:fixed;top:72px;right:18px;z-index:100;
+  background:var(--surface);border:1px solid var(--accent);border-radius:10px;
+  padding:10px 14px;font-size:.7rem;box-shadow:var(--glow);max-width:220px;
+  animation:nIn .3s cubic-bezier(.34,1.56,.64,1),nOut .3s ease 2.9s forwards}
+@keyframes nIn{from{opacity:0;transform:translateX(13px) scale(.9)}to{opacity:1;transform:none}}
+@keyframes nOut{to{opacity:0;transform:translateX(13px)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Turn<span>Sync</span></div>
+  <div class="hdr-right">
+    <div class="status-pill">
+      <div class="dot" id="conn-dot"></div>
+      <span id="conn-label">Connessione...</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ── SIDEBAR ── -->
+  <aside>
+    <div class="sb-block">
+      <div class="sec-lbl">Client Connessi</div>
+      <div class="big-num" id="client-count">0</div>
+      <div class="unit-lbl">online</div>
+    </div>
+    <div class="sb-block">
+      <div class="name-row">
+        <input class="name-inp" id="name-input" type="text" maxlength="20" placeholder="Il tuo nome...">
+        <button class="sm-btn" onclick="setName()">OK</button>
+      </div>
+    </div>
+    <div class="clist" id="client-list"></div>
+  </aside>
+
+  <!-- ── STAGE ── -->
+  <div class="stage">
+
+    <!-- Ready Gate -->
+    <div id="ready-gate">
+      <div class="gate-icon">🎬</div>
+      <div class="gate-title">TurnSync</div>
+      <div class="gate-sub">
+        Il sistema riproduce automaticamente un video di 15 secondi <em>solo</em> sul client di turno. Gli altri vedono uno schermo di attesa.<br><br>
+        Clicca per autorizzare l'autoplay del browser e entrare nella coda.
+      </div>
+      <button class="btn-ready" onclick="goReady()">▶ Sono pronto — avvia</button>
+    </div>
+
+    <!-- Turn header -->
+    <div class="turn-hdr">
+      <div class="turn-lbl">Turno in corso</div>
+      <div class="turn-name" id="turn-name">—</div>
+    </div>
+
+    <!-- Video area -->
+    <div class="video-container">
+      <!-- Player (only active client sees this) -->
+      <div class="video-wrap" id="video-wrap">
+        <video id="main-video" playsinline>
+          <source id="video-source" src="" type="video/mp4">
+        </video>
+        <div class="vid-badge" id="vid-badge">▶ IL TUO TURNO</div>
+      </div>
+
+      <!-- Waiting screen (non-active clients) -->
+      <div class="waiting-screen" id="waiting-screen">
+        <div class="wait-icon">📺</div>
+        <div class="wait-title">In riproduzione su</div>
+        <div class="wait-who" id="wait-who">—</div>
+        <div class="wait-dots">
+          <div class="wait-dot"></div>
+          <div class="wait-dot"></div>
+          <div class="wait-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase bar -->
+    <div class="phase-bar-wrap">
+      <div class="phase-info">
+        <span id="phase-label" class="phase-tag p-idle">In attesa</span>
+        <span id="countdown">—</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Video locale panel -->
+    <div class="video-panel">
+      <div class="vp-header">
+        <span class="vp-title">📁 Il mio video</span>
+        <button class="btn-upload" onclick="document.getElementById('file-input').click()">
+          ↑ Scegli file
+        </button>
+        <input type="file" id="file-input" accept="video/*" onchange="pickLocalVideo(this)">
+      </div>
+      <div class="vp-body" id="vp-body">
+        <!-- current local video shown here -->
+      </div>
+    </div>
+
+    <!-- Event log -->
+    <div class="event-log" id="event-log"></div>
+
+  </div><!-- /stage -->
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let myId=null, myName=null, ws=null, reconnectTimer=null;
+let currentPhase='idle', phaseEndsAt=null, currentActiveId=null;
+let progressRaf=null;
+// Video locale: solo in memoria nel browser, non condiviso col server
+let localVideoUrl='';      // blob: URL dell'ObjectURL
+let localVideoName='';     // nome file per display
+
+const video=document.getElementById('main-video');
+const videoSource=document.getElementById('video-source');
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function connect(){
+  const proto=location.protocol==='https:'?'wss:':'ws:';
+  ws=new WebSocket(proto+'//'+location.host);
+  ws.onopen=()=>{setConn(true);clearTimeout(reconnectTimer)};
+  ws.onmessage=e=>handle(JSON.parse(e.data));
+  ws.onclose=()=>{setConn(false);reconnectTimer=setTimeout(connect,2000)};
+  ws.onerror=()=>ws.close();
+}
+function send(d){if(ws&&ws.readyState===1)ws.send(JSON.stringify(d));}
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+function handle(msg){
+  if(msg.type==='welcome'){
+    myId=msg.id; myName=msg.name;
+    document.getElementById('name-input').value=myName;
+  }
+  if(msg.type==='state') syncState(msg);
+  if(msg.type==='play_video'){
+    currentActiveId=msg.clientId; currentPhase='playing'; phaseEndsAt=msg.phaseEndsAt;
+    currentVideoUrl=msg.video?.url||'';
+    updateVideoVisibility(msg.clientId, msg.clientName, msg.video);
+    startProgress();
+    addLog('▶ Video per <b>'+esc(msg.clientName)+'</b> — 15 sec');
+    updateTurnHeader();
+    if(msg.clientId===myId) notify('🎬 È il tuo turno!',true);
+  }
+  if(msg.type==='pause_between'){
+    currentPhase='pausing'; phaseEndsAt=msg.phaseEndsAt;
+    hideVideoShowWaiting(false);
+    startProgress();
+    addLog('⏸ Pausa '+Math.round(msg.durationMs/1000)+' sec');
+    updateTurnHeader();
+  }
+}
+
+// ── Video visibility ───────────────────────────────────────────────────────────
+function updateVideoVisibility(activeId, activeName, videoInfo){
+  const wrap    = document.getElementById('video-wrap');
+  const waiting = document.getElementById('waiting-screen');
+  const waitWho = document.getElementById('wait-who');
+
+  if(activeId === myId){
+    // MY TURN — usa il video selezionato localmente da questo client
+    const src = mySelectedVideo();
+    waiting.classList.remove('show');
+    wrap.classList.add('show','playing');
+
+    videoSource.src = src;
+    video.load();
+    video.play().catch(()=>{});
+
+    // Flash
+    const f=document.createElement('div');f.className='flash';document.body.appendChild(f);setTimeout(()=>f.remove(),600);
+  } else {
+    // NOT MY TURN — hide player, show waiting
+    video.pause(); video.currentTime=0;
+    wrap.classList.remove('show','playing');
+    waiting.classList.add('show');
+    waitWho.textContent = activeName || '—';
+  }
+}
+
+// Restituisce la URL del video locale (blob) o il default
+function mySelectedVideo(){
+  const DEFAULT = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  return localVideoUrl || DEFAULT;
+}
+
+function hideVideoShowWaiting(showWait=true){
+  const wrap    = document.getElementById('video-wrap');
+  const waiting = document.getElementById('waiting-screen');
+  video.pause(); video.currentTime=0;
+  wrap.classList.remove('show','playing');
+  waiting.classList.remove('show');
+}
+
+// ── State sync ────────────────────────────────────────────────────────────────
+function syncState(s){
+  document.getElementById('client-count').textContent=s.count;
+  currentPhase=s.phase||'idle'; phaseEndsAt=s.phaseEndsAt; currentActiveId=s.activeClientId;
+
+
+  // Sync video visibility if we connect mid-session
+  if(s.phase==='playing' && s.activeClientId){
+    const activeName = s.clients.find(c=>c.id===s.activeClientId)?.name||'';
+    updateVideoVisibility(s.activeClientId, activeName, null);
+  } else {
+    hideVideoShowWaiting(false);
+  }
+
+  updateTurnHeader(s.clients);
+  renderClientList(s.clients);
+  startProgress();
+  renderLocalVideoPanel();
+}
+
+function updateTurnHeader(cl){
+  const el=document.getElementById('turn-name');
+  if(!currentActiveId){el.textContent='— In attesa —';el.className='turn-name';return;}
+  let name=currentActiveId;
+  if(cl){const f=cl.find(c=>c.id===currentActiveId);if(f)name=f.name;}
+  const isMe=currentActiveId===myId;
+  el.textContent=isMe?name+' (Tu)':name;
+  el.className='turn-name'+(isMe?' mine':'');
+}
+
+function renderClientList(clients){
+  const list=document.getElementById('client-list'); list.innerHTML='';
+  clients.forEach(c=>{
+    const div=document.createElement('div');
+    div.className='ci'+(c.isActive?' active':'')+(c.id===myId?' me':'');
+    const init=c.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const tags=[];
+    if(c.isActive)tags.push('<span class="tag t-turn">turno</span>');
+    if(c.id===myId)tags.push('<span class="tag t-me">tu</span>');
+    if(!c.ready)tags.push('<span class="tag t-wait">in attesa</span>');
+    div.innerHTML='<div class="ci-av">'+init+'</div>'
+      +'<div class="ci-info"><div class="ci-name">'+esc(c.name)+'</div><div class="ci-tags">'+tags.join('')+'</div></div>'
+      +(c.isActive?'<div class="ci-arr">▶</div>':'');
+    list.appendChild(div);
+  });
+}
+
+// ── Video locale (solo client-side, nessun upload al server) ─────────────────
+function pickLocalVideo(input){
+  const file = input.files[0];
+  if(!file) return;
+  // Revoca eventuale blob precedente per liberare memoria
+  if(localVideoUrl && localVideoUrl.startsWith('blob:')) URL.revokeObjectURL(localVideoUrl);
+  localVideoUrl  = URL.createObjectURL(file);
+  localVideoName = file.name;
+  input.value = '';
+  renderLocalVideoPanel();
+  addLog('📁 Video locale: <b>'+esc(file.name)+'</b>');
+  notify('✓ Video pronto!', true);
+}
+
+function renderLocalVideoPanel(){
+  const body = document.getElementById('vp-body');
+  body.innerHTML = '';
+  if(localVideoUrl){
+    const chip = document.createElement('div');
+    chip.className = 'vid-chip selected';
+    chip.innerHTML =
+      '<div class="vid-chip-icon">🎬</div>'
+      +'<div class="vid-chip-info">'
+        +'<div class="vid-chip-name">'+esc(localVideoName)+'</div>'
+        +'<div class="vid-chip-size">Video locale — solo tu lo vedi</div>'
+      +'</div>'
+      +'<div class="vid-chip-check">✓</div>';
+    body.appendChild(chip);
+  } else {
+    body.innerHTML = '<div style="padding:10px 4px;font-size:.65rem;color:var(--muted)">Nessun video locale — verrà usato il default (Big Buck Bunny)</div>';
+  }
+}
+
+function formatSize(bytes){
+  if(bytes<1024*1024) return (bytes/1024).toFixed(0)+' KB';
+  return (bytes/(1024*1024)).toFixed(1)+' MB';
+}
+
+// ── Progress bar ───────────────────────────────────────────────────────────────
+function startProgress(){
+  cancelAnimationFrame(progressRaf);
+  if(!phaseEndsAt||currentPhase==='idle'){setProgressUI(0,'idle','—');return;}
+  tickProgress();
+}
+function tickProgress(){
+  const now=Date.now();
+  const total=currentPhase==='playing'?15000:5000;
+  const remaining=Math.max(0,phaseEndsAt-now);
+  const pct=Math.min(100,((total-remaining)/total)*100);
+  const secs=Math.ceil(remaining/1000);
+  if(currentPhase==='playing') setProgressUI(pct,'playing',secs+'s rimanenti');
+  else setProgressUI(pct,'pausing','Prossimo turno in '+secs+'s');
+  if(remaining>0) progressRaf=requestAnimationFrame(tickProgress);
+}
+function setProgressUI(pct,phase,label){
+  const fill=document.getElementById('progress-fill');
+  const pl=document.getElementById('phase-label');
+  const cd=document.getElementById('countdown');
+  fill.style.width=pct+'%';
+  const map={playing:['p-playing','▶ VIDEO'],pausing:['p-pausing','⏸ PAUSA'],idle:['p-idle','IN ATTESA']};
+  const [cls,txt]=map[phase]||map.idle;
+  pl.className='phase-tag '+cls; pl.textContent=txt; cd.textContent=label;
+  if(phase==='pausing')fill.classList.add('pfp'); else fill.classList.remove('pfp');
+}
+
+// ── Ready gate ────────────────────────────────────────────────────────────────
+function goReady(){
+  document.getElementById('ready-gate').style.display='none';
+  video.load();
+  send({type:'ready',clientId:myId});
+  addLog('✅ Sei entrato nella coda automatica');
+}
+
+// ── Name ──────────────────────────────────────────────────────────────────────
+function setName(){
+  const val=document.getElementById('name-input').value.trim();
+  if(!val)return; myName=val;
+  send({type:'rename',clientId:myId,name:val});
+}
+document.getElementById('name-input').addEventListener('keydown',e=>{if(e.key==='Enter')setName();});
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function addLog(html){
+  const log=document.getElementById('event-log');
+  const now=new Date();
+  const t=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+':'+now.getSeconds().toString().padStart(2,'0');
+  const e=document.createElement('div');e.className='log-entry';
+  e.innerHTML='<span class="log-t">'+t+'</span> <span>'+html+'</span>';
+  log.insertBefore(e,log.firstChild);
+  if(log.children.length>30)log.removeChild(log.lastChild);
+}
+let nTimer=null;
+function notify(text,good=false){
+  document.querySelectorAll('.notif').forEach(n=>n.remove());clearTimeout(nTimer);
+  const n=document.createElement('div');n.className='notif';n.textContent=text;
+  if(!good)n.style.borderColor='var(--accent2)';
+  document.body.appendChild(n);nTimer=setTimeout(()=>n.remove(),3200);
+}
+function setConn(on){
+  document.getElementById('conn-dot').className='dot'+(on?' on':'');
+  document.getElementById('conn-label').textContent=on?'Connesso':'Disconnesso';
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+connect();
+</script>
+</body>
+</html>
