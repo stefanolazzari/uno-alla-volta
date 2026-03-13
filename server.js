@@ -11,7 +11,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const VIDEO_DURATION_MS = 15_000;
-const PAUSE_BETWEEN_MS  =  5_000;
+const PAUSE_BETWEEN_MS  =  1_000;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 // Il video è scelto localmente da ogni client — il server non ne sa nulla
