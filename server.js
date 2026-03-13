@@ -116,4 +116,4 @@ wss.on('connection', (ws) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`TurnSync → http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Uno alla volta → http://localhost:${PORT}`));
