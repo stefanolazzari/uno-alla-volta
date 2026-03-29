@@ -11,7 +11,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const VIDEO_DURATION_MS = 15_000;
-const PAUSE_BETWEEN_MS  =  1_000;
+const PAUSE_BETWEEN_MS  =  0;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 // Il video è scelto localmente da ogni client — il server non ne sa nulla
@@ -78,13 +78,55 @@ function maybeStart() {
   if (phase === 'idle' && clients.size > 0 && readyCount() > 0) startSequence();
 }
 
+/** Solo id di client ancora connessi (evita voci fantasma in coda) */
+function sanitizeTurnQueue() {
+  turnQueue = turnQueue.filter(qid => clients.has(qid));
+}
+
+/**
+ * Il client che stava riproducendo si è disconnesso: non ruotare la coda come a fine video
+ * (endVideoStartPause rimanderebbe in coda l'id già rimosso).
+ */
+function skipToNextAfterActiveDisconnected() {
+  clearTimer();
+  activeClientId = null;
+  phase = 'pausing';
+  phaseEndsAt = Date.now() + PAUSE_BETWEEN_MS;
+  broadcast({ type: 'pause_between', durationMs: PAUSE_BETWEEN_MS, phaseEndsAt });
+  broadcastState();
+  sequenceTimer = setTimeout(startSequence, PAUSE_BETWEEN_MS);
+}
+
 function onClientGone(id) {
   const wasActive = activeClientId === id;
-  turnQueue = turnQueue.filter(qid => qid !== id);
   clients.delete(id);
-  if (clients.size === 0) { clearTimer(); phase='idle'; phaseEndsAt=null; activeClientId=null; return; }
-  if (wasActive && phase === 'playing') { clearTimer(); endVideoStartPause(); }
-  else broadcastState();
+  turnQueue = turnQueue.filter(qid => qid !== id);
+  sanitizeTurnQueue();
+
+  if (clients.size === 0) {
+    clearTimer();
+    phase = 'idle';
+    phaseEndsAt = null;
+    activeClientId = null;
+    return;
+  }
+
+  if (wasActive && phase === 'playing') {
+    skipToNextAfterActiveDisconnected();
+    return;
+  }
+
+  if (wasActive && phase === 'pausing') {
+    clearTimer();
+    activeClientId = null;
+    phase = 'idle';
+    phaseEndsAt = null;
+    broadcastState();
+    if (turnQueue.length > 0 && readyCount() > 0) startSequence();
+    return;
+  }
+
+  broadcastState();
 }
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────

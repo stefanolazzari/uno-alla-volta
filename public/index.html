@@ -36,11 +36,10 @@
   </aside>
 
   <!-- ── STAGE ── -->
-  <div class="stage">
+  <div class="stage" id="stage">
 
     <!-- Ready Gate -->
     <div id="ready-gate">
-      <div class="gate-icon">🎬</div>
       <div class="gate-title">Uno alla volta</div>
       <div class="gate-sub">
         Il sistema riproduce automaticamente un video di 15 secondi <em>solo</em> sul client di turno. Gli altri vedono uno schermo di attesa.<br><br>
@@ -62,12 +61,14 @@
         <video id="main-video" playsinline>
           <source id="video-source" src="" type="video/mp4">
         </video>
-        <div class="vid-badge" id="vid-badge">▶ IL TUO TURNO</div>
+        <button type="button" class="btn-fullscreen" id="btn-fullscreen" onclick="toggleMainVideoFullscreen()" aria-label="Schermo intero" title="Schermo intero">
+          <svg class="fs-icon fs-enter" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+          <svg class="fs-icon fs-exit" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" hidden><path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+        </button>
       </div>
 
       <!-- Waiting screen (non-active clients) -->
       <div class="waiting-screen" id="waiting-screen">
-        <div class="wait-icon">📺</div>
         <div class="wait-title">In riproduzione su</div>
         <div class="wait-who" id="wait-who">—</div>
         <div class="wait-dots">
@@ -81,8 +82,13 @@
     <!-- Phase bar -->
     <div class="phase-bar-wrap">
       <div class="phase-info">
-        <span id="phase-label" class="phase-tag p-idle">In attesa</span>
-        <span id="countdown">—</span>
+        <div class="phase-info-main">
+          <span id="phase-label" class="phase-tag p-idle">In attesa</span>
+          <span id="countdown">—</span>
+        </div>
+        <button type="button" class="btn-fs-exit" id="btn-fs-exit" hidden onclick="exitMainVideoFullscreenIfNeeded()" aria-label="Esci da schermo intero" title="Esci da schermo intero">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+        </button>
       </div>
       <div class="progress-track">
         <div class="progress-fill" id="progress-fill"></div>
@@ -146,7 +152,7 @@ function handle(msg){
     startProgress();
     addLog('▶ Video per <b>'+esc(msg.clientName)+'</b> — 15 sec');
     updateTurnHeader();
-    if(msg.clientId===myId) notify('🎬 È il tuo turno!',true);
+    if(msg.clientId===myId) notify(msg.clientName,true);
   }
   if(msg.type==='pause_between'){
     currentPhase='pausing'; phaseEndsAt=msg.phaseEndsAt;
@@ -173,6 +179,8 @@ function updateVideoVisibility(activeId, activeName, videoInfo){
     video.load();
     video.play().catch(()=>{});
 
+    setMyPlayFocus(true);
+
     // Flash
     const f=document.createElement('div');f.className='flash';document.body.appendChild(f);setTimeout(()=>f.remove(),600);
   } else {
@@ -181,6 +189,7 @@ function updateVideoVisibility(activeId, activeName, videoInfo){
     wrap.classList.remove('show','playing');
     waiting.classList.add('show');
     waitWho.textContent = activeName || '—';
+    setMyPlayFocus(false);
   }
 }
 
@@ -190,13 +199,69 @@ function mySelectedVideo(){
   return localVideoUrl || DEFAULT;
 }
 
+function setMyPlayFocus(on){
+  document.body.classList.toggle('my-play-active', !!on);
+}
+
 function hideVideoShowWaiting(showWait=true){
   const wrap    = document.getElementById('video-wrap');
   const waiting = document.getElementById('waiting-screen');
   video.pause(); video.currentTime=0;
   wrap.classList.remove('show','playing');
   waiting.classList.remove('show');
+  setMyPlayFocus(false);
 }
+
+function isDocumentFullscreen(){
+  return !!(document.fullscreenElement||document.webkitFullscreenElement||document.msFullscreenElement);
+}
+
+function syncFullscreenButton(){
+  const on=isDocumentFullscreen();
+  const btn=document.getElementById('btn-fullscreen');
+  const btnExit=document.getElementById('btn-fs-exit');
+  if(btn){
+    btn.setAttribute('aria-pressed',on?'true':'false');
+    btn.setAttribute('aria-label',on?'Esci da schermo intero':'Schermo intero');
+    btn.title=on?'Esci da schermo intero':'Schermo intero';
+    btn.querySelector('.fs-enter').toggleAttribute('hidden',on);
+    btn.querySelector('.fs-exit').toggleAttribute('hidden',!on);
+  }
+  if(btnExit) btnExit.toggleAttribute('hidden',!on);
+}
+
+function exitMainVideoFullscreenIfNeeded(){
+  if(!isDocumentFullscreen())return;
+  const d=document;
+  if(d.exitFullscreen)d.exitFullscreen().catch(()=>{});
+  else if(d.webkitExitFullscreen)d.webkitExitFullscreen();
+  else if(d.msExitFullscreen)d.msExitFullscreen();
+}
+
+function toggleMainVideoFullscreen(){
+  const stage=document.getElementById('stage');
+  const vid=document.getElementById('main-video');
+  if(isDocumentFullscreen()){
+    exitMainVideoFullscreenIfNeeded();
+    return;
+  }
+  const req=stage.requestFullscreen||stage.webkitRequestFullscreen||stage.msRequestFullscreen;
+  if(req){
+    Promise.resolve(req.call(stage)).catch(()=>tryVideoNativeFullscreen(vid));
+  }else{
+    tryVideoNativeFullscreen(vid);
+  }
+}
+
+function tryVideoNativeFullscreen(vid){
+  if(vid.webkitEnterFullscreen)vid.webkitEnterFullscreen();
+  else if(vid.requestFullscreen)vid.requestFullscreen().catch(()=>{});
+  else if(vid.webkitRequestFullscreen)vid.webkitRequestFullscreen();
+}
+
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>{
+  document.addEventListener(ev,syncFullscreenButton);
+});
 
 // ── State sync ────────────────────────────────────────────────────────────────
 function syncState(s){
@@ -266,8 +331,7 @@ function renderLocalVideoPanel(){
     const chip = document.createElement('div');
     chip.className = 'vid-chip selected';
     chip.innerHTML =
-      '<div class="vid-chip-icon">🎬</div>'
-      +'<div class="vid-chip-info">'
+      '<div class="vid-chip-info">'
         +'<div class="vid-chip-name">'+esc(localVideoName)+'</div>'
         +'<div class="vid-chip-size">Video locale — solo tu lo vedi</div>'
       +'</div>'

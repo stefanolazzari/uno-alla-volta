@@ -34,6 +34,72 @@ body {
   flex-direction: column
 }
 
+/* Client di turno durante la riproduzione: solo il video riempie l’area utile (fine riproduzione → layout normale) */
+body.my-play-active header,
+body.my-play-active aside {
+  display: none !important;
+}
+
+body.my-play-active main {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  min-height: 0;
+}
+
+body.my-play-active .stage {
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+body.my-play-active .turn-hdr,
+body.my-play-active .phase-bar-wrap,
+body.my-play-active .video-panel,
+body.my-play-active .event-log {
+  display: none !important;
+}
+
+body.my-play-active .video-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 env(safe-area-inset-right, 0) 0 env(safe-area-inset-left, 0);
+}
+
+body.my-play-active .video-wrap {
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  max-width: 100vw;
+  max-height: 100vh;
+  display: block;
+}
+
+@supports (height: 100dvh) {
+  body.my-play-active .video-wrap {
+    width: min(100vw, calc(100dvh * 16 / 9));
+    height: min(100dvh, calc(100vw * 9 / 16));
+    max-height: 100dvh;
+  }
+}
+
+body.my-play-active #main-video {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: unset;
+  object-fit: contain;
+  display: block;
+}
+
 /* grid bg */
 body::before {
   content: '';
@@ -320,6 +386,14 @@ aside {
   background: var(--border)
 }
 
+.stage:fullscreen,
+.stage:-webkit-full-screen {
+  background: var(--bg);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%
+}
+
 /* ── READY GATE ── */
 #ready-gate {
   position: absolute;
@@ -402,21 +476,14 @@ aside {
 /* Player — visible only to active client */
 .video-wrap {
   width: 100%;
-  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--border);
   background: #000;
   position: relative;
-  transition: border-color .4s;
   display: none
 }
 
 .video-wrap.show {
   display: block
-}
-
-.video-wrap.playing {
-  border-color: var(--accent2);
 }
 
 #main-video {
@@ -439,12 +506,44 @@ aside {
   backdrop-filter: blur(4px)
 }
 
+.btn-fullscreen {
+  position: absolute;
+  bottom: 9px;
+  right: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .65);
+  color: #fff;
+  cursor: pointer;
+  transition: border-color .2s, background .2s, color .2s;
+  backdrop-filter: blur(4px)
+}
+
+.btn-fullscreen:hover {
+  border-color: rgba(255, 95, 56, .55);
+  background: rgba(0, 0, 0, .8);
+  color: var(--accent2)
+}
+
+.btn-fullscreen:focus-visible {
+  outline: 2px solid var(--accent3);
+  outline-offset: 2px
+}
+
+.btn-fullscreen .fs-icon[hidden] {
+  display: none
+}
+
 /* Waiting screen — visible to non-active clients */
 .waiting-screen {
   width: 100%;
   aspect-ratio: 16/9;
-  border-radius: 12px;
-  border: 1px solid var(--border);
   background: var(--surface);
   display: none;
   align-items: center;
@@ -564,7 +663,47 @@ aside {
   align-items: center;
   font-size: .62rem;
   color: var(--muted);
-  margin-bottom: 6px
+  margin-bottom: 6px;
+  gap: 8px
+}
+
+.phase-info-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 8px
+}
+
+.btn-fs-exit {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s
+}
+
+.btn-fs-exit:hover {
+  border-color: var(--accent3);
+  color: var(--accent3)
+}
+
+.btn-fs-exit:focus-visible {
+  outline: 2px solid var(--accent3);
+  outline-offset: 2px
+}
+
+.btn-fs-exit[hidden] {
+  display: none
 }
 
 .phase-tag {
@@ -698,7 +837,7 @@ aside {
 }
 
 .vid-chip-name {
-  white-space: nowrap;
+  white-space: no;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 180px;
@@ -729,12 +868,12 @@ aside {
 }
 
 /* upload progress bar */
-.upload-bar-wrap {
+.upload-bar- {
   display: none;
   padding: 0 12px 12px
 }
 
-.upload-bar-wrap.show {
+.upload-bar-.show {
   display: block
 }
 
