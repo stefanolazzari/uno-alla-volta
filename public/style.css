@@ -1,4 +1,3 @@
-
 :root {
   --bg: #080810;
   --surface: #10101a;
@@ -507,27 +506,23 @@ aside {
 }
 
 .btn-fullscreen {
-  position: absolute;
-  bottom: 9px;
-  right: 9px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, .25);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(0, 0, 0, .65);
-  color: #fff;
+  background: var(--surface);
+  color: var(--muted);
   cursor: pointer;
-  transition: border-color .2s, background .2s, color .2s;
-  backdrop-filter: blur(4px)
+  transition: border-color .2s, background .2s, color .2s
 }
 
 .btn-fullscreen:hover {
-  border-color: rgba(255, 95, 56, .55);
-  background: rgba(0, 0, 0, .8);
+  border-color: var(--accent2);
   color: var(--accent2)
 }
 
@@ -1006,3 +1001,4 @@ aside {
     transform: translateX(13px)
   }
 }
+.name-display{flex:1;font-family:'Space Mono',monospace;font-size:.72rem;color:var(--accent3);padding:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}

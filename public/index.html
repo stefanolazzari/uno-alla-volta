@@ -28,8 +28,7 @@
     </div>
     <div class="sb-block">
       <div class="name-row">
-        <input class="name-inp" id="name-input" type="text" maxlength="20" placeholder="Il tuo nome...">
-        <button class="sm-btn" onclick="setName()">OK</button>
+        <span class="name-display" id="name-input"></span>
       </div>
     </div>
     <div class="clist" id="client-list"></div>
@@ -61,10 +60,7 @@
         <video id="main-video" playsinline>
           <source id="video-source" src="" type="video/mp4">
         </video>
-        <button type="button" class="btn-fullscreen" id="btn-fullscreen" onclick="toggleMainVideoFullscreen()" aria-label="Schermo intero" title="Schermo intero">
-          <svg class="fs-icon fs-enter" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-          <svg class="fs-icon fs-exit" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" hidden><path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
-        </button>
+
       </div>
 
       <!-- Waiting screen (non-active clients) -->
@@ -86,6 +82,10 @@
           <span id="phase-label" class="phase-tag p-idle">In attesa</span>
           <span id="countdown">—</span>
         </div>
+        <button type="button" class="btn-fullscreen" id="btn-fullscreen" onclick="toggleMainVideoFullscreen()" aria-label="Schermo intero" title="Schermo intero">
+          <svg class="fs-icon fs-enter" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+          <svg class="fs-icon fs-exit" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" hidden><path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+        </button>
         <button type="button" class="btn-fs-exit" id="btn-fs-exit" hidden onclick="exitMainVideoFullscreenIfNeeded()" aria-label="Esci da schermo intero" title="Esci da schermo intero">
           <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
         </button>
@@ -142,7 +142,8 @@ function send(d){if(ws&&ws.readyState===1)ws.send(JSON.stringify(d));}
 function handle(msg){
   if(msg.type==='welcome'){
     myId=msg.id; myName=msg.name;
-    document.getElementById('name-input').value=myName;
+    document.getElementById('name-input').textContent=myName;
+    document.title = myName + ' — Uno alla volta';
   }
   if(msg.type==='state') syncState(msg);
   if(msg.type==='play_video'){
@@ -193,10 +194,55 @@ function updateVideoVisibility(activeId, activeName, videoInfo){
   }
 }
 
-// Restituisce la URL del video locale (blob) o il default
+// Lista di video di default — viene pescato uno a caso ad ogni turno
+const DEFAULT_VIDEOS = [
+  {
+    url:  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    name: 'Big Buck Bunny'
+  },
+  {
+    url:  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    name: 'Elephants Dream'
+  },
+  {
+    url:  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    name: 'For Bigger Blazes'
+  },
+  {
+    url:  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    name: 'For Bigger Escapes'
+  },
+  {
+    url:  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    name: 'For Bigger Fun'
+  },
+  {
+    url:  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+    name: 'For Bigger Joyrides'
+  },
+  {
+    url:  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
+    name: 'Subaru Outback'
+  },
+  {
+    url:  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+    name: 'Tears of Steel'
+  },
+];
+
+let _lastDefaultIndex = -1; // evita di ripetere lo stesso due volte di fila
+
+// Restituisce la URL del video locale (blob) o un default casuale (non ripetuto)
 function mySelectedVideo(){
-  const DEFAULT = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-  return localVideoUrl || DEFAULT;
+  if(localVideoUrl) return localVideoUrl;
+  // Pesca un indice diverso dall'ultimo
+  let idx;
+  do { idx = Math.floor(Math.random() * DEFAULT_VIDEOS.length); }
+  while(DEFAULT_VIDEOS.length > 1 && idx === _lastDefaultIndex);
+  _lastDefaultIndex = idx;
+  const chosen = DEFAULT_VIDEOS[idx];
+  addLog('🎲 Default casuale: <b>' + esc(chosen.name) + '</b>');
+  return chosen.url;
 }
 
 function setMyPlayFocus(on){
@@ -338,7 +384,7 @@ function renderLocalVideoPanel(){
       +'<div class="vid-chip-check">✓</div>';
     body.appendChild(chip);
   } else {
-    body.innerHTML = '<div style="padding:10px 4px;font-size:.65rem;color:var(--muted)">Nessun video locale — verrà usato il default (Big Buck Bunny)</div>';
+    body.innerHTML = '<div style="padding:10px 4px;font-size:.65rem;color:var(--muted)">Nessun video locale — verrà usato un video casuale ad ogni turno</div>';
   }
 }
 
@@ -382,13 +428,8 @@ function goReady(){
   addLog('✅ Sei entrato nella coda automatica');
 }
 
-// ── Name ──────────────────────────────────────────────────────────────────────
-function setName(){
-  const val=document.getElementById('name-input').value.trim();
-  if(!val)return; myName=val;
-  send({type:'rename',clientId:myId,name:val});
-}
-document.getElementById('name-input').addEventListener('keydown',e=>{if(e.key==='Enter')setName();});
+// ── Name (sola lettura) ───────────────────────────────────────────────────────
+// Il nome è assegnato dal server e non è modificabile dal client.
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function addLog(html){
